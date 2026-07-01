@@ -102,6 +102,91 @@ class Product:
         return total_price
 
 
+class NonStockedProduct(Product):
+    """
+    Represents a digital or non-physical product with unlimited quantity.
+    """
+
+    def __init__(self, name: str, price: float) -> None:
+        """
+        Initialize a new NonStockedProduct instance.
+
+        :param name: The name of the product.
+        :param price: The price of the product.
+        """
+        # Non-stocked products have a fixed quantity of 0 internally
+        super().__init__(name, price, quantity=0)
+
+    def show(self) -> str:
+        """
+        Return a string representation specifying unlimited quantity.
+
+        :return: Formatted string representing the product details.
+        """
+        return f"{self.name}, Price: ${self.price:.0f}, Quantity: Unlimited"
+
+    def buy(self, quantity: int) -> float:
+        """
+        Buy a specific quantity of the non-stocked product.
+        Overrides the base method to prevent reduction of stock.
+
+        :param quantity: The amount to buy.
+        :return: The total price of the purchase.
+        :raises ValueError: If quantity is invalid or product is inactive.
+        """
+        if not isinstance(quantity, int) or quantity <= 0:
+            raise ValueError("Quantity to buy must be a positive integer.")
+        if not self.is_active():
+            raise ValueError("Product is currently inactive and cannot be bought.")
+
+        return self.price * quantity
+
+
+class LimitedProduct(Product):
+    """
+    Represents a product that has a restriction on the maximum quantity per order.
+    """
+
+    def __init__(self, name: str, price: float, quantity: int, maximum: int) -> None:
+        """
+        Initialize a new LimitedProduct instance.
+
+        :param name: The name of the product.
+        :param price: The price of the product.
+        :param quantity: The available quantity in the store.
+        :param maximum: Maximum allowed quantity per single order.
+        :raises ValueError: If maximum is not a positive integer.
+        """
+        super().__init__(name, price, quantity)
+        if not isinstance(maximum, int) or maximum <= 0:
+            raise ValueError("Maximum order limit must be a positive integer.")
+        self._maximum = maximum
+
+    def show(self) -> str:
+        """
+        Return a string representation specifying the order limit restriction.
+
+        :return: Formatted string representing the product details.
+        """
+        return (f"{self.name}, Price: ${self.price:.0f}, Quantity: "
+                f"{self.quantity}, Limited to {self._maximum} per order!")
+
+    def buy(self, quantity: int) -> float:
+        """
+        Buy a specific quantity of the limited product.
+        Validates against the maximum order limit before execution.
+
+        :param quantity: The amount to buy.
+        :return: The total price of the purchase.
+        :raises ValueError: If quantity exceeds the maximum limit per order or standard checks fail.
+        """
+        if isinstance(quantity, int) and quantity > self._maximum:
+            raise ValueError(f"Processing failed: Maximum allowed quantity "
+                             f"for this item is {self._maximum} per order.")
+
+        return super().buy(quantity)
+
+
 def main() -> None:
     """
     Main execution function for testing the Product class.
