@@ -4,7 +4,7 @@ Contains the Store class for managing a collection of products.
 """
 
 from typing import List, Tuple
-from products import Product
+from products import Product, NonStockedProduct
 
 
 class Store:
@@ -76,8 +76,11 @@ class Store:
                 raise ValueError("Order quantity cannot be negative.")
             if not product.is_active():
                 raise ValueError(f"Product '{product.name}' is inactive.")
-            if quantity > product.get_quantity():
-                raise ValueError(f"Not enough stock for '{product.name}'.")
+
+            # Skip stock check ONLY if it is not a non-stocked product
+            if not isinstance(product, NonStockedProduct):
+                if quantity > product.get_quantity():
+                    raise ValueError(f"Not enough stock for '{product.name}'.")
 
         # Execution: Process purchases after validation
         for product, quantity in shopping_list:
