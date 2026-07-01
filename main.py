@@ -4,7 +4,7 @@ Handles the user interface and application loop.
 """
 
 import sys
-from products import Product
+from products import Product, NonStockedProduct, LimitedProduct
 from store import Store
 
 
@@ -35,8 +35,8 @@ def _handle_list_products(store_obj: Store) -> None:
 
     print("------")
     for index, product in enumerate(products, start=1):
-        # Format string to match the demo UI setup
-        print(f"{index}. {product.name}, Price: ${product.price:.0f}, Quantity: {product.quantity}")
+        # Dynamically use the polymorphic show() method of each product type
+        print(f"{index}. {product.show()}")
     print("------")
 
 
@@ -134,7 +134,9 @@ def main() -> None:
     product_list = [
         Product("MacBook Air M2", price=1450.0, quantity=100),
         Product("Bose QuietComfort Earbuds", price=250.0, quantity=500),
-        Product("Google Pixel 7", price=500.0, quantity=250)
+        Product("Google Pixel 7", price=500.0, quantity=250),
+        NonStockedProduct("Windows License", price=125.0),
+        LimitedProduct("Shipping", price=10.0, quantity=250, maximum=1)
     ]
 
     best_buy = Store(product_list)
