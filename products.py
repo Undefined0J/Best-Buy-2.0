@@ -3,6 +3,9 @@ Product module for Best Buy store.
 Contains the Product class for managing inventory items.
 """
 
+from typing import Optional
+from promotions import Promotion
+
 
 class Product:
     """
@@ -29,12 +32,11 @@ class Product:
         self.price = float(price)
         self.quantity = quantity
         self.active = True
+        self.promotion: Optional[Promotion] = None
 
     def get_quantity(self) -> int:
         """
         Get the current quantity of the product.
-
-        :return: The current quantity.
         """
         return self.quantity
 
@@ -42,9 +44,6 @@ class Product:
         """
         Set a new quantity for the product.
         Deactivates the product if quantity reaches 0.
-
-        :param quantity: The new quantity to set.
-        :raises ValueError: If the new quantity is negative.
         """
         if not isinstance(quantity, int) or quantity < 0:
             raise ValueError("Quantity cannot be negative.")
@@ -56,8 +55,6 @@ class Product:
     def is_active(self) -> bool:
         """
         Check if the product is active.
-
-        :return: True if active, False otherwise.
         """
         return self.active
 
@@ -73,21 +70,29 @@ class Product:
         """
         self.active = False
 
+    def get_promotion(self) -> Optional[Promotion]:
+        """
+        Get the current promotion of the product.
+        """
+        return self.promotion
+
+    def set_promotion(self, promotion: Optional[Promotion]) -> None:
+        """
+        Set a new promotion for the product.
+        """
+        self.promotion = promotion
+
     def show(self) -> str:
         """
-        Return a string representation of the product.
-
-        :return: Formatted string representing the product details.
+        Return a string representation of the product, including promotion if active.
         """
-        return f"{self.name}, Price: {self.price}, Quantity: {self.quantity}"
+        promo_text = self.promotion.name if self.promotion else "None"
+        return (f"{self.name}, Price: ${self.price:.0f}, Quantity: "
+                f"{self.quantity}, Promotion: {promo_text}")
 
     def buy(self, quantity: int) -> float:
         """
-        Buy a specific quantity of the product.
-
-        :param quantity: The amount to buy.
-        :return: The total price of the purchase.
-        :raises ValueError: If quantity is invalid, exceeds stock, or product is inactive.
+        Buy a specific quantity of the product, applying promotions if available.
         """
         if not isinstance(quantity, int) or quantity <= 0:
             raise ValueError("Quantity to buy must be a positive integer.")
@@ -96,7 +101,11 @@ class Product:
         if quantity > self.quantity:
             raise ValueError("Not enough stock available.")
 
-        total_price = self.price * quantity
+        if self.promotion:
+            total_price = self.promotion.apply_promotion(self, quantity)
+        else:
+            total_price = self.price * quantity
+
         self.set_quantity(self.quantity - quantity)
 
         return total_price
@@ -108,37 +117,21 @@ class NonStockedProduct(Product):
     """
 
     def __init__(self, name: str, price: float) -> None:
-        """
-        Initialize a new NonStockedProduct instance.
-
-        :param name: The name of the product.
-        :param price: The price of the product.
-        """
-        # Non-stocked products have a fixed quantity of 0 internally
         super().__init__(name, price, quantity=0)
 
     def show(self) -> str:
-        """
-        Return a string representation specifying unlimited quantity.
-
-        :return: Formatted string representing the product details.
-        """
-        return f"{self.name}, Price: ${self.price:.0f}, Quantity: Unlimited"
+        promo_text = self.promotion.name if self.promotion else "None"
+        return (f"{self.name}, Price: ${self.price:.0f}, "
+                f"Quantity: Unlimited, Promotion: {promo_text}")
 
     def buy(self, quantity: int) -> float:
-        """
-        Buy a specific quantity of the non-stocked product.
-        Overrides the base method to prevent reduction of stock.
-
-        :param quantity: The amount to buy.
-        :return: The total price of the purchase.
-        :raises ValueError: If quantity is invalid or product is inactive.
-        """
         if not isinstance(quantity, int) or quantity <= 0:
             raise ValueError("Quantity to buy must be a positive integer.")
         if not self.is_active():
             raise ValueError("Product is currently inactive and cannot be bought.")
 
+        if self.promotion:
+            return self.promotion.apply_promotion(self, quantity)
         return self.price * quantity
 
 
@@ -148,62 +141,19 @@ class LimitedProduct(Product):
     """
 
     def __init__(self, name: str, price: float, quantity: int, maximum: int) -> None:
-        """
-        Initialize a new LimitedProduct instance.
-
-        :param name: The name of the product.
-        :param price: The price of the product.
-        :param quantity: The available quantity in the store.
-        :param maximum: Maximum allowed quantity per single order.
-        :raises ValueError: If maximum is not a positive integer.
-        """
         super().__init__(name, price, quantity)
         if not isinstance(maximum, int) or maximum <= 0:
             raise ValueError("Maximum order limit must be a positive integer.")
         self._maximum = maximum
 
     def show(self) -> str:
-        """
-        Return a string representation specifying the order limit restriction.
-
-        :return: Formatted string representing the product details.
-        """
-        return (f"{self.name}, Price: ${self.price:.0f}, Quantity: "
-                f"{self.quantity}, Limited to {self._maximum} per order!")
+        promo_text = self.promotion.name if self.promotion else "None"
+        return (f"{self.name}, Price: ${self.price:.0f}, Quantity: {self.quantity}, "
+                f"Limited to {self._maximum} per order!, Promotion: {promo_text}")
 
     def buy(self, quantity: int) -> float:
-        """
-        Buy a specific quantity of the limited product.
-        Validates against the maximum order limit before execution.
-
-        :param quantity: The amount to buy.
-        :return: The total price of the purchase.
-        :raises ValueError: If quantity exceeds the maximum limit per order or standard checks fail.
-        """
         if isinstance(quantity, int) and quantity > self._maximum:
             raise ValueError(f"Processing failed: Maximum allowed quantity "
                              f"for this item is {self._maximum} per order.")
 
         return super().buy(quantity)
-
-
-def main() -> None:
-    """
-    Main execution function for testing the Product class.
-    """
-    bose = Product("Bose QuietComfort Earbuds", price=250.0, quantity=500)
-    mac = Product("MacBook Air M2", price=1450.0, quantity=100)
-
-    print(bose.buy(50))
-    print(mac.buy(100))
-    print(mac.is_active())
-
-    print(bose.show())
-    print(mac.show())
-
-    bose.set_quantity(1000)
-    print(bose.show())
-
-
-if __name__ == "__main__":
-    main()
