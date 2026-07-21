@@ -4,7 +4,7 @@ Contains the Store class for managing a collection of products.
 """
 
 from typing import List, Tuple
-from products import Product, NonStockedProduct
+from products import Product
 
 
 class Store:
@@ -60,31 +60,29 @@ class Store:
     def order(self, shopping_list: List[Tuple[Product, int]]) -> float:
         """
         Process an order for a list of products.
-        Implements a dry-run check to prevent partial transactions on failure.
+        Implements a fully atomic dry-run check using polymorphic validation.
+        To prevent bypassing limits.
 
         :param shopping_list: List of tuples containing (Product, quantity).
         :return: Total cost of the order.
         :raises ValueError: If formatting is wrong, stock is insufficient, or a product is inactive.
         """
-        total_price = 0.0
-
-        # Dry Run: Validate the entire order before making any changes
+        aggregated_order = {}
         for product, quantity in shopping_list:
             if not isinstance(product, Product) or not isinstance(quantity, int):
                 raise ValueError("Invalid shopping list item format.")
-            if quantity < 0:
-                raise ValueError("Order quantity cannot be negative.")
-            if not product.is_active():
-                raise ValueError(f"Product '{product.name}' is inactive.")
+            if product in aggregated_order:
+                aggregated_order[product] += quantity
+            else:
+                aggregated_order[product] = quantity
 
-            # Skip stock check ONLY if it is not a non-stocked product
-            if not isinstance(product, NonStockedProduct):
-                if quantity > product.get_quantity():
-                    raise ValueError(f"Not enough stock for '{product.name}'.")
+        for product, total_quantity in aggregated_order.items():
+            product.check_purchase(total_quantity)
 
-        # Execution: Process purchases after validation
-        for product, quantity in shopping_list:
-            total_price += product.buy(quantity)
+        # Execution: Process purchases after the entire order is valid
+        total_price = 0.0
+        for product, total_quantity in aggregated_order.items():
+            total_price += product.buy(total_quantity)
 
         return total_price
 
